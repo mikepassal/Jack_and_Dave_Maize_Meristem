@@ -1,0 +1,225 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+```{r}
+library(limma)
+library(tidyverse)
+library(edgeR)
+```
+
+
+```{r}
+IM_SPM_cells <- readRDS("~/passala/Collaborator_Data/Maize_arabi_Jack_Collab/updated_ear_tassel/IM.earlySPM.final.rds")
+SPM_cells <- readRDS("~/passala/Collaborator_Data/Maize_arabi_Jack_Collab/updated_ear_tassel/SPM.final.rds") 
+SM_cells <- readRDS("~/passala/Collaborator_Data/Maize_arabi_Jack_Collab/updated_ear_tassel/SM.final.rds")
+FM_cells <- readRDS("~/passala/Collaborator_Data/Maize_arabi_Jack_Collab/updated_ear_tassel/FM.final.rds")
+TSBR_cells<- readRDS("~/passala/Collaborator_Data/Maize_arabi_Jack_Collab/updated_ear_tassel/TasselBr.final.rds")
+```
+
+
+
+
+```{r}
+#Subset Seurat object based on identity class, also see ?SubsetData
+im_meristem_tip = subset(x = IM_SPM_cells, idents = "Pith")
+# Subset on a value in the object meta data
+
+im_xu16_meristem_tip = subset(x = im_meristem_tip, subset = orig.ident== "xu16" )
+im_xu19_meristem_tip = subset(x = im_meristem_tip, subset = orig.ident== "xu19" )
+im_xu29_meristem_tip = subset(x = im_meristem_tip, subset = orig.ident== "xu29" )
+im_xu32_meristem_tip = subset(x = im_meristem_tip, subset = orig.ident== "xu32" )
+```
+
+
+
+```{r}
+#Subset Seurat object based on identity class, also see ? SubsetData
+reg_spm_meristem_tip = subset(x = SPM_cells, idents = "Pith")
+# Subset on a value in the object meta data
+
+reg_spm_xu44_meristem_tip = subset(x = reg_spm_meristem_tip, subset = orig.ident== "xu44" )
+reg_spm_xu46_meristem_tip = subset(x = reg_spm_meristem_tip, subset = orig.ident== "xu46" )
+
+```
+
+
+```{r}
+#Subset Seurat object based on identity class, also see ?SubsetData
+sm_meristem_tip = subset(x = SM_cells, idents = "Pith")
+# Subset on a value in the object meta data
+
+sm_xu45_meristem_tip = subset(x = sm_meristem_tip, subset = orig.ident== "xu45" )
+sm_xu47_meristem_tip = subset(x = sm_meristem_tip, subset = orig.ident== "xu47" )
+```
+
+
+```{r}
+fm_meristem_tip = subset(x = FM_cells,idents = "Pith")
+# Subset on a value in the object meta data
+
+fm_xu43_meristem_tip = subset(x = fm_meristem_tip, subset = orig.ident== "xu43" )
+fm_xu48_meristem_tip = subset(x = fm_meristem_tip, subset = orig.ident== "xu48" )
+```
+
+
+```{r}
+br_meristem_tip = subset(x = TSBR_cells,idents ="Pith")
+# Subset on a value in the object meta data
+
+br_xu39_meristem_tip = subset(x = br_meristem_tip, subset = orig.ident== "xu39" )
+br_xu40_meristem_tip = subset(x = br_meristem_tip, subset = orig.ident== "xu40" )
+```
+
+
+```{r}
+all_data = c(im_xu16_meristem_tip,im_xu19_meristem_tip,im_xu29_meristem_tip,im_xu32_meristem_tip,reg_spm_xu44_meristem_tip,reg_spm_xu46_meristem_tip,sm_xu45_meristem_tip,sm_xu47_meristem_tip,fm_xu43_meristem_tip,fm_xu48_meristem_tip,br_xu39_meristem_tip,br_xu40_meristem_tip)
+
+```
+
+```{r}
+data_stage = c("im","im","im","im","spm","spm","sm","sm","fm","fm","br","br")
+```
+
+
+```{r}
+
+list_of_lists_of_gene_names = c() 
+for (cellset in all_data) {
+  current_gene_names = list(cellset@assays[["RNA"]]@counts@Dimnames[[1]])
+  list_of_lists_of_gene_names = append(list_of_lists_of_gene_names, current_gene_names)
+  
+  
+
+  
+}
+
+intersect_of_all_gene_names = Reduce(intersect,list_of_lists_of_gene_names)
+
+  
+```
+
+```{r}
+list_of_rna_dataframe = list()
+increment = 1
+for (cellset in all_data){
+
+
+  current_rna_counts = rowMeans(cellset@assays[['RNA']]@counts)
+  rna_dataframe = as.data.frame(current_rna_counts)
+  rna_dataframe$names = row.names(rna_dataframe)
+  rna_dataframe = subset(rna_dataframe, names %in% intersect_of_all_gene_names)
+  list_of_rna_dataframe[[increment]] = rna_dataframe
+  increment = increment + 1 
+}
+```
+
+
+```{r}
+full_merged_psuedobulk = list_of_rna_dataframe %>% reduce(inner_join, by='names')
+rownames(full_merged_psuedobulk) = full_merged_psuedobulk$names
+
+full_merged_psuedobulk = (subset(full_merged_psuedobulk, select = -c( names)))
+```
+
+```{r}
+col_names = c("im_xu16_meristem_tip","im_xu19_meristem_tip","im_xu29_meristem_tip","im_xu32_meristem_tip","reg_spm_xu44_meristem_tip","reg_spm_xu46_meristem_tip","sm_xu45_meristem_tip","sm_xu47_meristem_tip","fm_xu43_meristem_tip","fm_xu48_meristem_tip","br_xu39_meristem_tip","br_xu40_meristem_tip")
+```
+
+```{r}
+names(full_merged_psuedobulk) = col_names
+```
+
+```{r}
+write.csv(full_merged_psuedobulk, "~/passala/Generated_Tables/Jack_dave_meristem_bulk_csvs/limma_jack_Pith_bulked_updated_tassel.csv", row.names=TRUE)
+```
+
+
+```{r}
+d0 <- DGEList(full_merged_psuedobulk)
+
+
+d0 <- calcNormFactors(d0)
+
+```
+
+
+
+```{r}
+cutoff <- 1
+drop <- which(apply(cpm(d0), 1, max) < cutoff)
+d <- d0[-drop,] 
+dim(d) # number of genes left
+```
+
+
+```{r}
+
+plotMDS(d, col = as.numeric(data_stage))
+
+```
+
+
+```{r}
+des_mat <- model.matrix(~ data_stage + 0)
+colnames(des_mat) <- stringr::str_remove(colnames(des_mat), "data_stage")
+
+```
+
+```{r}
+voomed_matrix <- voom(d, des_mat, plot = T)
+
+```
+
+
+```{r}
+fit <- lmFit(voomed_matrix, design = des_mat)
+
+```
+
+
+```{r}
+fit <- eBayes(fit)
+
+```
+
+```{r}
+contrast_matrix <- makeContrasts(
+  "IM vs Other" = im - (fm + spm + sm + br) / 4,
+  "SPM vs Other" = spm - (im + fm + sm + br) / 4,
+  "SM vs Other" = sm - (im + fm + spm + br) / 4,
+  "FM vs Other" = fm - (im + spm + sm + br) / 4,
+  "BR vs Other" = br - (im + spm + sm + fm) / 4,
+  levels = des_mat
+)
+```
+
+```{r}
+contrasts_fit <- contrasts.fit(fit, contrast_matrix)
+contrasts_fit <- eBayes(contrasts_fit)
+```
+
+```{r}
+stats_df <- topTable(contrasts_fit, number = nrow(voomed_matrix)) %>%
+  tibble::rownames_to_column("Gene")
+```
+
+```{r}
+head(stats_df, 20)
+
+```
+
+
+```{r}
+write.csv(stats_df, "~/passala/git/Jack_and_Dave_Maize_Meristem/Maize_ear_tassel_updated/Pith_model_1_v_all_low_trim.csv", row.names=TRUE)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
